@@ -1,6 +1,8 @@
 #include "major.h"
 #include "SimpleAudioEngine.h"
 #include "HelloWorldScene.h"
+#include "gameoverscene.h"
+#include "windows.h"
 #include <vector>
 
 USING_NS_CC;
@@ -16,7 +18,11 @@ major::major()
 		}
 	}
 	now_score = 0;
+	next_squaretype = rand() % 19;
 	score_label = NULL;
+	is_game = true;
+
+
 }
 
 major::~major()
@@ -47,13 +53,35 @@ bool major::init()
 	auto visibleSize = Director::getInstance()->getVisibleSize();
 	Vec2 origin = Director::getInstance()->getVisibleOrigin();
 
+
+	//初始化背景颜色 
+	auto rect = Director::getInstance()->getOpenGLView()->getVisibleRect();
+	float x = rect.origin.x + rect.size.width / 2;
+	float y = rect.origin.y + rect.size.height / 2;
+	auto sprite = Sprite::create("game2.png");
+	sprite->setPosition(Vec2(x, y));
+	addChild(sprite, 0);
+
 	//初始化分数
 	char buf[4] = { 0 };
 	sprintf(buf, "%d", now_score);
-	score_label = LabelTTF::create(buf, "Arial", 30);
-	score_label->setPosition(Vec2(330,300));
+	score_label = LabelTTF::create(buf, "Arial", 50);
+	score_label->setPosition(Vec2(335,280));
 	score_label->setColor(ccc3(190, 190, 190));
 	addChild(score_label);
+
+	//初始化下一个方块显示
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			next_square[i][j] = CCSprite::create("square.png");
+			next_square[i][j]->setPosition(Vec2(310+ 14 * j, 200 - 14 * i));
+			next_square[i][j]->setScale(3.0f);
+			next_square[i][j]->setColor(ccc3(255,255,255));
+			this->addChild(next_square[i][j]);
+		}
+	}
 
 	//初始化格子
 	for (int i = 0; i < LINE; i++)
@@ -65,12 +93,12 @@ bool major::init()
 			square[i][j]->setPosition(Vec2(160+14.5*j,310-14.5*i));
 			square[i][j]->setTag(0);
 			square[i][j]->setColor(ccc3(255, 255, 255));
-			this->addChild(square[i][j]);
+			this->addChild(square[i][j],5);
 		}
 	}
 
-	auto* backgroud = LayerColor::create(ccc4(0,0,0,0));
-	this->addChild(backgroud);
+	
+
 	// add a "close" icon to exit the progress. it's an autorelease object
 	auto closeItem = MenuItemImage::create(
 		"CloseSelected.png",
@@ -96,63 +124,100 @@ bool major::init()
 	this->addChild(menu, 1);
 
 	/////////////////////////////
-	// 3. add your codes below...
-
-	// add a label shows "Hello World"
-	// create and initialize a label
-
-	
+    //添加回到主界面按钮
 	auto home = MenuItemImage::create("home.png", "home.png", this, menu_selector(major::menuOKCallback));
 	home->setPosition(Vec2(visibleSize.width / 2 + origin.x -345 , visibleSize.height / 2 + origin.y -20));
 	home->setScale(0.4f);
 	auto phome = Menu::create(home, NULL);
 	addChild(phome, 2);
 
-	is_paused = true;
-	auto* play = MenuItemImage::create("start.png", "start.png", this, menu_selector(major::play));
-	play->setPosition(Vec2(visibleSize.width / 2 + origin.x - 340, visibleSize.height / 2 + origin.y - 310));
-	play->setScale(1.3f);
-	auto* pause = MenuItemImage::create("pause.png", "pause.png", this, menu_selector(major::pause));
-	pause->setPosition(Vec2(visibleSize.width / 2 + origin.x - 350, visibleSize.height / 2 + origin.y - 280));
-	pause->setScale(1.3f);
+	//添加背景音乐按钮
+	auto* play = MenuItemImage::create("music1.png", "music1.png", this, menu_selector(major::pause));
+	play->setPosition(Vec2(visibleSize.width / 2 + origin.x - 348.5, visibleSize.height / 2 + origin.y - 220));
+	play->setScale(0.3f);
 	auto* pplay = Menu::create(play, NULL);
-	auto* ppause = Menu::create(pause, NULL);
 	addChild(pplay, 2);
-	addChild(ppause, 2);
 
-	auto myKeyListener = EventListenerKeyboard::create();
-	myKeyListener->onKeyPressed = ([=](EventKeyboard::KeyCode keycode, cocos2d::Event *event)
+	is_paused = true;
+	auto* play_game = MenuItemImage::create("start.png", "start.png", this, menu_selector(major::resume_game));
+	play_game->setPosition(Vec2(visibleSize.width / 2 + origin.x - 340, visibleSize.height / 2 + origin.y - 310));
+	play_game->setScale(1.3f);
+	auto* pause_game = MenuItemImage::create("pause.png", "pause.png", this, menu_selector(major::pause_game));
+	pause_game->setPosition(Vec2(visibleSize.width / 2 + origin.x - 350, visibleSize.height / 2 + origin.y - 280));
+	pause_game->setScale(1.3f);
+	auto* pplay_game = Menu::create(play_game, NULL);
+	auto* ppause_game = Menu::create(pause_game, NULL);
+	addChild(pplay_game, 2);
+	addChild(ppause_game, 2);
+
+
+	//添加键盘监听
+	myKeyListener = EventListenerKeyboard::create();
+	myKeyListener->onKeyReleased = [=](EventKeyboard::KeyCode keycode, cocos2d::Event *event)
 	{
+		key[keycode] = false;
+	};
+
+	myKeyListener->onKeyPressed = [=](EventKeyboard::KeyCode keycode, cocos2d::Event *event)
+	{
+		key[keycode] = true;
 		switch (keycode)
 		{
-		case EventKeyboard::KeyCode::KEY_DOWN_ARROW: //down
-			updateDown(0.0);
-			break;
-		case EventKeyboard::KeyCode::KEY_RIGHT_ARROW: //right
-			updateRight();
-			break; 
-		case EventKeyboard::KeyCode::KEY_LEFT_ARROW: //left
-			updateLeft();
-			break;
 		case EventKeyboard::KeyCode::KEY_SPACE://change
 			nextSquareType();
 			break;
+		case EventKeyboard::KeyCode::KEY_UP_ARROW://fast down
+			updateDown(0.0);
+			updateDown(0.0);
+			updateDown(0.0);
+			break;
 		}
-	});
-	auto dispatcher = Director::getInstance()->getEventDispatcher();
+	};
+	dispatcher = Director::getInstance()->getEventDispatcher();
 
 	//添加到事件分发器  
 	dispatcher->addEventListenerWithSceneGraphPriority(myKeyListener, this);
+	this->scheduleUpdate();
 
-	//newSquareType();
-	now_squaretype = 2;
-	now_column = 3;
-	now_line = 0;
-	square[now_line][now_column + 1]->setColor(ccc3(52, 228, 249));
-	square[now_line][now_column + 1]->setTag(1);
-	schedule(schedule_selector(major::updateDown), 0.3f);
+	newSquareType();
+	
+	//speed = speed / (now_score+5);
+	schedule(schedule_selector(major::updateDown), speed / (now_score + 5));
 
 	return true;
+}
+
+void major::update(float delta)//重写update函数
+{
+	if (is_game)
+	{
+		Node::update(delta);
+		if (key[EventKeyboard::KeyCode::KEY_DOWN_ARROW])
+		{
+			updateDown(0.0);
+			Sleep(50);
+		}
+		else if (key[EventKeyboard::KeyCode::KEY_LEFT_ARROW])
+		{
+			updateLeft();
+			Sleep(80);
+		}
+		else if (key[EventKeyboard::KeyCode::KEY_RIGHT_ARROW])
+		{
+			updateRight();
+			Sleep(80);
+		}
+		/*else if (key[EventKeyboard::KeyCode::KEY_UP_ARROW])
+		{
+			updateDown(0.0);
+			Sleep(50);
+		}
+		else if (key[EventKeyboard::KeyCode::KEY_SPACE])
+		{
+			nextSquareType();
+			Sleep(50);
+		}*/
+	}
 }
 
 void major::menuCloseCallback(Ref* pSender)
@@ -177,9 +242,10 @@ void major::play(cocos2d::Object* pSender)
 	if (is_paused)
 	{
 		CocosDenshion::SimpleAudioEngine::sharedEngine()->resumeBackgroundMusic();
+		removeChild(ppause);
 	}
 	else {
-		CocosDenshion::SimpleAudioEngine::sharedEngine()->playBackgroundMusic("mobanche.wav");
+		CocosDenshion::SimpleAudioEngine::sharedEngine()->playBackgroundMusic("1.mp3",true);
 		CocosDenshion::SimpleAudioEngine::sharedEngine()->getBackgroundMusicVolume();
 	}
 	is_paused = false;
@@ -187,18 +253,22 @@ void major::play(cocos2d::Object* pSender)
 
 void major::menuOKCallback(cocos2d::Ref* pSender)
 {
-	Director::getInstance()->popScene();
+	Director::getInstance()->replaceScene(TransitionMoveInT::create(1.0f,HelloWorld::create()));
 }
 
 void major::pause(cocos2d::Object* pSender)
 {
 	is_paused = true;
 	CocosDenshion::SimpleAudioEngine::sharedEngine()->pauseBackgroundMusic();
+	auto* pause = MenuItemImage::create("music2.png", "music2.png", this, menu_selector(major::play));
+	pause->setPosition(Vec2(-105, -60));
+	pause->setScale(0.3f);
+	ppause = Menu::create(pause, NULL);
+	addChild(ppause, 4);
 }
 
 void major::clearLine(int start_line, int end_line)
 {
-	//checkfail();
 	int i;
 	for (i = start_line; i <= end_line; i++)
 	{
@@ -219,10 +289,24 @@ void major::clearLine(int start_line, int end_line)
 				square[0][b]->setTag(0);
 			}
 			now_score++;
+			Clearline_music();
 		}
 
 	}
 	updatescore();
+	for (int i = 0; i < LINE; i++)
+	{
+		for (int j = 0; j < COLUMN; j++)
+		{
+			if (square[i][j]->getTag() == 1)
+				square[i][j]->setColor(ccc3(255, 0, 0));
+		}
+	}
+}
+
+void major::Clearline_music()
+{
+	CocosDenshion::SimpleAudioEngine::sharedEngine()->playEffect("6755.wav");
 }
 
 void major::copyline(int line_num)
@@ -237,8 +321,8 @@ void major::copyline(int line_num)
 void major::newSquareType()
 {
 	srand(time(0));
-	now_squaretype = (rand()*rand()) % 19;
-	log("%d", now_squaretype);
+	now_squaretype = next_squaretype;
+	next_squaretype = (rand()*rand()) % 19;
 	switch (now_squaretype)
 	{
 		case 0:
@@ -379,6 +463,149 @@ void major::newSquareType()
 			square[now_line][now_column + 1]->setTag(1);
 			break;
 	}
+
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			next_square[i][j]->setColor(ccc3(255,255,255));
+		}
+	}
+	switch (next_squaretype)
+	{
+	case 0:
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[1][2]->setColor(ccc3(30, 144, 255));
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		next_square[2][2]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 1:
+		next_square[1][0]->setColor(ccc3(30, 144, 255));
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[1][2]->setColor(ccc3(30, 144, 255));
+		next_square[1][3]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 2:
+		next_square[0][1]->setColor(ccc3(30, 144, 255));
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		next_square[3][1]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 3:
+		next_square[1][2]->setColor(ccc3(30, 144, 255));
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		next_square[2][2]->setColor(ccc3(30, 144, 255));
+		next_square[2][3]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 4:
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		next_square[3][1]->setColor(ccc3(30, 144, 255));
+		next_square[2][2]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 5:
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[1][2]->setColor(ccc3(30, 144, 255));
+		next_square[1][3]->setColor(ccc3(30, 144, 255));
+		next_square[2][2]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 6:
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		next_square[1][2]->setColor(ccc3(30, 144, 255));
+		next_square[2][2]->setColor(ccc3(30, 144, 255));
+		next_square[3][2]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 7:
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[1][2]->setColor(ccc3(30, 144, 255));
+		next_square[1][3]->setColor(ccc3(30, 144, 255));
+		next_square[2][3]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 8:
+		next_square[0][2]->setColor(ccc3(30, 144, 255));
+		next_square[1][2]->setColor(ccc3(30, 144, 255));
+		next_square[2][2]->setColor(ccc3(30, 144, 255));
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 9:
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		next_square[2][2]->setColor(ccc3(30, 144, 255));
+		next_square[2][3]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 10:
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[1][2]->setColor(ccc3(30, 144, 255));
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		next_square[3][1]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 11:
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[1][2]->setColor(ccc3(30, 144, 255));
+		next_square[1][3]->setColor(ccc3(30, 144, 255));
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 12:
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[1][2]->setColor(ccc3(30, 144, 255));
+		next_square[2][2]->setColor(ccc3(30, 144, 255));
+		next_square[3][2]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 13:
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		next_square[2][2]->setColor(ccc3(30, 144, 255));
+		next_square[2][3]->setColor(ccc3(30, 144, 255));
+		next_square[1][3]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 14:
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		next_square[3][1]->setColor(ccc3(30, 144, 255));
+		next_square[3][2]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 15:
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[1][2]->setColor(ccc3(30, 144, 255));
+		next_square[2][2]->setColor(ccc3(30, 144, 255));
+		next_square[2][3]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 16:
+		next_square[0][2]->setColor(ccc3(30, 144, 255));
+		next_square[1][2]->setColor(ccc3(30, 144, 255));
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		break;
+		
+	case 17:
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		next_square[2][2]->setColor(ccc3(30, 144, 255));
+		next_square[1][2]->setColor(ccc3(30, 144, 255));
+		next_square[1][3]->setColor(ccc3(30, 144, 255));
+		break;
+
+	case 18:
+		next_square[1][1]->setColor(ccc3(30, 144, 255));
+		next_square[2][1]->setColor(ccc3(30, 144, 255));
+		next_square[2][2]->setColor(ccc3(30, 144, 255));
+		next_square[3][2]->setColor(ccc3(30, 144, 255));
+		break;
+	}
 }
 
 void major::nextSquareType()
@@ -432,7 +659,6 @@ void major::nextSquareType()
 			}
 			now_line--;
 			now_column += 2;
-			CCLOG("%d", now_line);
 		}
 		else if (now_column + 2 == COLUMN)//靠最右边时
 		{
@@ -490,6 +716,510 @@ void major::nextSquareType()
 
 		now_squaretype = 1;
 		break;
+
+	case 3:
+		square[now_line][now_column]->setColor(ccc3(255, 255, 255));
+		square[now_line][now_column]->setTag(0);
+
+		square[now_line + 1][now_column + 1]->setColor(ccc3(52, 228, 249));
+		square[now_line + 1][now_column + 1]->setTag(1);
+
+		now_line++;
+		now_column++;
+		now_squaretype = 4;
+		break;
+
+	case 4:
+		if (now_line - 2 >= 0)
+		{//判断是否可以变换
+			if (now_column - 1 < 0)
+			{
+				if (square[now_line - 1][now_column + 2]->getTag() == 1 || square[now_line][now_column + 1]->getTag() == 1)
+					return;
+				square[now_line][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column]->setTag(0);
+				square[now_line - 2][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column]->setTag(0);
+
+				square[now_line][now_column + 1]->setColor(ccc3(52, 228, 249));
+				square[now_line][now_column + 1]->setTag(1);
+				square[now_line - 1][now_column + 2]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column + 2]->setTag(1);
+
+				now_squaretype = 5;
+				break;
+			}
+			else
+			{
+				if (square[now_line - 1][now_column - 1]->getTag() == 1)
+					return;
+				square[now_line - 2][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column]->setTag(0);
+
+				square[now_line - 1][now_column - 1]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column - 1]->setTag(1);
+
+				now_column--;
+				now_squaretype = 5;
+				break;
+			}
+		}
+		break;
+		
+	case 5:
+		if (now_line - 2 >= 0)
+		{
+			square[now_line - 1][now_column + 2]->setColor(ccc3(255, 255, 255));
+			square[now_line - 1][now_column + 2]->setTag(0);
+
+			square[now_line - 2][now_column + 1]->setColor(ccc3(52, 228, 249));
+			square[now_line - 2][now_column + 1]->setTag(1);
+
+			now_squaretype = 6;
+		}
+		break;
+
+	case 6:
+		if (now_line - 2 >= 0)
+		{//判断是否可以变换
+			if (now_column + 2 > COLUMN - 1)
+			{
+				if (square[now_line - 1][now_column - 1]->getTag() == 1)
+					return;
+				square[now_line][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column + 1]->setTag(0);
+				square[now_line - 2][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column + 1]->setTag(0);
+
+				square[now_line - 1][now_column - 1]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column - 1]->setTag(1);
+				square[now_line - 2][now_column]->setColor(ccc3(52, 228, 249));
+				square[now_line - 2][now_column]->setTag(1);
+
+				now_line--;
+				now_column--;
+				now_squaretype = 3;
+				break;
+			}
+			else
+			{
+				square[now_line][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column + 1]->setTag(0);
+
+				square[now_line - 1][now_column + 2]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column + 2]->setTag(1);
+
+				now_line--;
+				now_squaretype = 3;
+				break;
+			}
+		}
+		break;
+
+	case 7:
+		if (now_line - 2 >= 0)
+		{
+			if (square[now_line][now_column]->getTag() == 1 || square[now_line][now_column + 1]->getTag() == 1 || square[now_line - 2][now_column + 1]->getTag() == 1)
+				return;
+			square[now_line][now_column + 2]->setColor(ccc3(255, 255, 255));
+			square[now_line][now_column + 2]->setTag(0);
+			square[now_line - 1][now_column]->setColor(ccc3(255, 255, 255));
+			square[now_line - 1][now_column]->setTag(0);
+			square[now_line - 1][now_column + 2]->setColor(ccc3(255, 255, 255));
+			square[now_line - 1][now_column + 2]->setTag(0);
+
+			square[now_line][now_column]->setColor(ccc3(52, 228, 249));
+			square[now_line][now_column]->setTag(1);
+			square[now_line][now_column + 1]->setColor(ccc3(52, 228, 249));
+			square[now_line][now_column + 1]->setTag(1);
+			square[now_line - 2][now_column + 1]->setColor(ccc3(52, 228, 249));
+			square[now_line - 2][now_column + 1]->setTag(1);
+
+			now_squaretype = 8;
+		}
+		break;
+
+	case 8:
+		if (now_line - 2 >= 0)
+		{//判断是否可以变换
+			if (now_column + 2 > COLUMN - 1)
+			{
+				if (square[now_line - 1][now_column - 1]->getTag() == 1 || square[now_line - 2][now_column - 1]->getTag() == 1 || square[now_line - 1][now_column]->getTag() == 1)
+					return;
+				square[now_line][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column]->setTag(0);
+				square[now_line][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column + 1]->setTag(0);
+				square[now_line - 2][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column + 1]->setTag(0);
+
+				square[now_line - 1][now_column]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column]->setTag(1);
+				square[now_line - 1][now_column - 1]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column - 1]->setTag(1);
+				square[now_line - 2][now_column - 1]->setColor(ccc3(52, 228, 249));
+				square[now_line - 2][now_column - 1]->setTag(1);
+
+				now_line--;
+				now_column--;
+				now_squaretype = 9;
+				break;
+			}
+			else
+			{
+				if (square[now_line - 1][now_column]->getTag() == 1 || square[now_line - 2][now_column]->getTag() == 1 || square[now_line - 1][now_column + 2]->getTag() == 1)
+					return;
+				square[now_line][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column]->setTag(0);
+				square[now_line][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column + 1]->setTag(0);
+				square[now_line - 2][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column + 1]->setTag(0);
+
+				square[now_line - 1][now_column]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column]->setTag(1);
+				square[now_line - 1][now_column + 2]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column + 2]->setTag(1);
+				square[now_line - 2][now_column]->setColor(ccc3(52, 228, 249));
+				square[now_line - 2][now_column]->setTag(1);
+
+				now_line--;
+				now_squaretype = 9;
+				break;
+			}
+		}
+		break;
+	case 9:
+		if (now_line - 1 >= 0)
+		{
+			if (square[now_line + 1][now_column + 1]->getTag() == 1 || square[now_line - 1][now_column + 1]->getTag() == 1 || square[now_line - 1][now_column + 2]->getTag() == 1)
+				return;
+
+			square[now_line][now_column]->setColor(ccc3(255, 255, 255));
+			square[now_line][now_column]->setTag(0);
+			square[now_line][now_column + 2]->setColor(ccc3(255, 255, 255));
+			square[now_line][now_column + 2]->setTag(0);
+			square[now_line - 1][now_column]->setColor(ccc3(255, 255, 255));
+			square[now_line - 1][now_column]->setTag(0);
+
+			square[now_line - 1][now_column + 1]->setColor(ccc3(52, 228, 249));
+			square[now_line - 1][now_column + 1]->setTag(1);
+			square[now_line - 1][now_column + 2]->setColor(ccc3(52, 228, 249));
+			square[now_line - 1][now_column + 2]->setTag(1);
+			square[now_line + 1][now_column + 1]->setColor(ccc3(52, 228, 249));
+			square[now_line + 1][now_column + 1]->setTag(1);
+
+			now_line++;
+			now_column++;
+			now_squaretype = 10;
+		}
+		break;
+
+	case 10:
+		if (now_line - 2 >= 0)
+		{//判断是否可以变换
+			if (now_column - 1 < 0)
+			{
+				if (square[now_line - 1][now_column + 2]->getTag() == 1 || square[now_line][now_column + 2]->getTag() == 1 || square[now_line - 1][now_column + 1]->getTag() == 1)
+					return;
+				square[now_line][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column]->setTag(0);
+				square[now_line - 2][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column]->setTag(0);
+				square[now_line - 2][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column + 1]->setTag(0);
+
+				square[now_line - 1][now_column + 1]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column + 1]->setTag(1);
+				square[now_line - 1][now_column + 2]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column + 2]->setTag(1);
+				square[now_line][now_column + 2]->setColor(ccc3(52, 228, 249));
+				square[now_line][now_column + 2]->setTag(1);
+
+				now_squaretype = 7;
+				break;
+			}
+			else
+			{
+				if (square[now_line][now_column + 1]->getTag() == 1 || square[now_line - 1][now_column + 1]->getTag() == 1 || square[now_line - 1][now_column - 1]->getTag() == 1)
+					return;
+				square[now_line][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column]->setTag(0);
+				if (now_line - 2 >= 0)
+					square[now_line - 2][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column]->setTag(0);
+				square[now_line - 2][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column + 1]->setTag(0);
+
+				square[now_line - 1][now_column - 1]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column - 1]->setTag(1);
+				square[now_line - 1][now_column + 1]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column + 1]->setTag(1);
+				square[now_line][now_column + 1]->setColor(ccc3(52, 228, 249));
+				square[now_line][now_column + 1]->setTag(1);
+
+				now_column--;
+				now_squaretype = 7;
+				break;
+			}
+		}
+		break;
+	case 11:
+		if (now_line - 2 >= 0)
+		{
+			if (square[now_line][now_column + 1]->getTag() == 1 || square[now_line - 2][now_column]->getTag() == 1 || square[now_line - 2][now_column + 1]->getTag() == 1)
+				return;
+			square[now_line][now_column]->setColor(ccc3(255, 255, 255));
+			square[now_line][now_column]->setTag(0);
+			square[now_line - 1][now_column]->setColor(ccc3(255, 255, 255));
+			square[now_line - 1][now_column]->setTag(0);
+			square[now_line - 1][now_column + 2]->setColor(ccc3(255, 255, 255));
+			square[now_line - 1][now_column + 2]->setTag(0);
+
+			square[now_line - 2][now_column]->setColor(ccc3(52, 228, 249));
+			square[now_line - 2][now_column]->setTag(1);
+			square[now_line - 2][now_column + 1]->setColor(ccc3(52, 228, 249));
+			square[now_line - 2][now_column + 1]->setTag(1);
+			square[now_line][now_column + 1]->setColor(ccc3(52, 228, 249));
+			square[now_line][now_column + 1]->setTag(1);
+
+			now_squaretype = 12;
+		}
+		break;
+
+	case 12:
+		if (now_line - 2 >= 0)
+		{
+			if (now_column + 2 > COLUMN - 1)
+			{
+				if (square[now_line - 1][now_column - 1]->getTag() == 1 || square[now_line - 1][now_column]->getTag() == 1)
+					return;
+				square[now_line][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column + 1]->setTag(0);
+				square[now_line - 2][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column]->setTag(0);
+				
+				square[now_line - 1][now_column - 1]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column - 1]->setTag(1);
+				square[now_line - 1][now_column]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column]->setTag(1);
+
+				now_line--;
+				now_column--;
+				now_squaretype = 13;
+				break;
+			}
+			else
+			{
+				if (square[now_line - 1][now_column]->getTag() == 1 || square[now_line - 1][now_column + 2]->getTag() == 1 || square[now_line - 2][now_column + 2]->getTag() == 1)
+					return;
+				square[now_line][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column + 1]->setTag(0);
+				square[now_line - 2][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column]->setTag(0);
+				square[now_line - 2][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column + 1]->setTag(0);
+
+				square[now_line - 2][now_column + 2]->setColor(ccc3(52, 228, 249));
+				square[now_line - 2][now_column + 2]->setTag(1);
+				square[now_line - 1][now_column]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column]->setTag(1);
+				square[now_line - 1][now_column + 2]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column + 2]->setTag(1);
+
+				now_line--;
+				now_squaretype = 13;
+				break;
+			}
+		}
+		break;
+
+	case 13:
+		if (now_line - 1 >= 0)
+		{
+			if (square[now_line + 1][now_column + 1]->getTag() == 1 || square[now_line + 1][now_column + 2]->getTag() == 1 || square[now_line - 1][now_column + 1]->getTag() == 1)
+				return;
+			square[now_line][now_column]->setColor(ccc3(255, 255, 255));
+			square[now_line][now_column]->setTag(0);
+			square[now_line][now_column + 2]->setColor(ccc3(255, 255, 255));
+			square[now_line][now_column + 2]->setTag(0);
+			square[now_line - 1][now_column + 2]->setColor(ccc3(255, 255, 255));
+			square[now_line - 1][now_column + 2]->setTag(0);
+
+			square[now_line - 1][now_column + 1]->setColor(ccc3(52, 228, 249));
+			square[now_line - 1][now_column + 1]->setTag(1);
+			square[now_line + 1][now_column + 1]->setColor(ccc3(52, 228, 249));
+			square[now_line + 1][now_column + 1]->setTag(1);
+			square[now_line + 1][now_column + 2]->setColor(ccc3(52, 228, 249));
+			square[now_line + 1][now_column + 2]->setTag(1);
+
+			now_line++;
+			now_column++;
+			now_squaretype = 14;
+		}
+		break;
+
+	case 14:
+		if (now_line - 2 >= 0)
+		{
+			if (now_column - 1 < 0)
+			{
+				if (square[now_line - 1][now_column + 1]->getTag() == 1 || square[now_line - 1][now_column + 2]->getTag() == 1)
+					return;
+				square[now_line][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column + 1]->setTag(0);
+				square[now_line - 2][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column]->setTag(0);
+
+			    square[now_line - 1][now_column + 1]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column + 1]->setTag(1);
+				square[now_line - 1][now_column + 2]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column + 2]->setTag(1);
+
+				now_squaretype = 11;
+				break;
+			}
+			else
+			{
+				if (square[now_line - 1][now_column - 1]->getTag() == 1 || square[now_line][now_column - 1]->getTag() == 1 || square[now_line - 1][now_column + 1]->getTag() == 1)
+					return;
+				square[now_line][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column]->setTag(0);
+				square[now_line][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column + 1]->setTag(0);
+				square[now_line - 2][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column]->setTag(0);
+
+
+				square[now_line][now_column - 1]->setColor(ccc3(52, 228, 249));
+				square[now_line][now_column - 1]->setTag(1);
+				square[now_line - 1][now_column - 1]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column - 1]->setTag(1);
+				square[now_line - 1][now_column + 1]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column + 1]->setTag(1);
+
+				now_column--;
+				now_squaretype = 11;
+				break;
+			}
+		}
+		break;
+
+	case 15:
+		if (now_line - 2 >= 0)
+		{
+			if (square[now_line][now_column]->getTag() == 1 || square[now_line - 2][now_column + 1]->getTag() == 1)
+				return;
+			square[now_line][now_column + 1]->setColor(ccc3(255, 255, 255));
+			square[now_line][now_column + 1]->setTag(0);
+			square[now_line][now_column + 2]->setColor(ccc3(255, 255, 255));
+			square[now_line][now_column + 2]->setTag(0);
+
+			square[now_line][now_column]->setColor(ccc3(52, 228, 249));
+			square[now_line][now_column]->setTag(1);
+			square[now_line - 2][now_column + 1]->setColor(ccc3(52, 228, 249));
+			square[now_line - 2][now_column + 1]->setTag(1);
+			now_squaretype = 16;
+		}
+		break;
+
+	case 16:
+		if (now_line - 2 >= 0)
+		{
+			if (now_column + 2 > COLUMN - 1)
+			{
+				if (square[now_line - 1][now_column - 1]->getTag() == 1 || square[now_line][now_column + 1]->getTag() == 1)
+					return;
+				square[now_line - 1][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line - 1][now_column + 1]->setTag(0);
+				square[now_line - 2][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column + 1]->setTag(0);
+
+				square[now_line][now_column + 1]->setColor(ccc3(52, 228, 249));
+				square[now_line][now_column + 1]->setTag(1);
+				square[now_line - 1][now_column - 1]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column - 1]->setTag(1);
+				now_column--;
+				now_squaretype = 15;
+				break;
+			}
+			else
+			{
+				if (square[now_line][now_column + 1]->getTag() == 1 || square[now_line][now_column + 2]->getTag() == 1)
+					return;
+				square[now_line][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column]->setTag(0);
+				square[now_line - 2][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column + 1]->setTag(0);
+
+				square[now_line][now_column + 1]->setColor(ccc3(52, 228, 249));
+				square[now_line][now_column + 1]->setTag(1);
+				square[now_line][now_column + 2]->setColor(ccc3(52, 228, 249));
+				square[now_line][now_column + 2]->setTag(1);
+				now_squaretype = 15;
+				break;
+			}
+		}
+		break;
+
+	case 17:
+		if (now_line - 2 >= 0)
+		{
+			if (square[now_line][now_column + 2]->getTag() == 1 || square[now_line - 2][now_column + 1]->getTag() == 1)
+				return;
+			square[now_line][now_column]->setColor(ccc3(255, 255, 255));
+			square[now_line][now_column]->setTag(0);
+			square[now_line][now_column + 1]->setColor(ccc3(255, 255, 255));
+			square[now_line][now_column + 1]->setTag(0);
+
+			square[now_line][now_column + 2]->setColor(ccc3(52, 228, 249));
+			square[now_line][now_column + 2]->setTag(1);
+			square[now_line - 2][now_column + 1]->setColor(ccc3(52, 228, 249));
+			square[now_line - 2][now_column + 1]->setTag(1);
+			now_column++;
+			now_squaretype = 18;
+		}
+		break;
+
+	case 18:
+		if (now_line - 2 >= 0)
+		{
+			if (now_column - 1 < 0)
+			{
+				if (square[now_line][now_column]->getTag() == 1 || square[now_line - 1][now_column + 2]->getTag() == 1)
+					return;
+				square[now_line - 1][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line - 1][now_column]->setTag(0);
+				square[now_line - 2][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column]->setTag(0);
+
+				square[now_line][now_column]->setColor(ccc3(52, 228, 249));
+				square[now_line][now_column]->setTag(1);
+				square[now_line - 1][now_column + 2]->setColor(ccc3(52, 228, 249));
+				square[now_line - 1][now_column + 2]->setTag(1);
+				now_squaretype = 17;
+				break;
+			}
+			else
+			{
+				if (square[now_line][now_column]->getTag() == 1 || square[now_line][now_column - 1]->getTag() == 1)
+					return;
+				square[now_line][now_column + 1]->setColor(ccc3(255, 255, 255));
+				square[now_line][now_column + 1]->setTag(0);
+				square[now_line - 2][now_column]->setColor(ccc3(255, 255, 255));
+				square[now_line - 2][now_column]->setTag(0);
+
+				square[now_line][now_column - 1]->setColor(ccc3(52, 228, 249));
+				square[now_line][now_column - 1]->setTag(1);
+				square[now_line][now_column]->setColor(ccc3(52, 228, 249));
+				square[now_line][now_column]->setTag(1);
+
+				now_column--;
+				now_squaretype = 17;
+				break;
+			}
+		}
+		break;
 	}
 
 }
@@ -511,11 +1241,15 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line + 1][now_column]->getTag() == 1 || square[now_line + 1][now_column + 1]->getTag() == 1)//被下方挡住
 		{
-			square[now_line][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-			clearLine(now_line, now_line - 1);
+			checkfail();
+			if (now_line - 1 >= 0)
+			{
+				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+				clearLine(now_line, now_line - 1);
+			}
 			newSquareType();
 			return;
 		}
@@ -551,6 +1285,7 @@ void major::updateDown(float dt)
 		{
 			if (square[now_line + 1][now_column + i]->getTag() == 1)
 			{
+				checkfail();
 				square[now_line][now_column - 1]->setColor(ccc3(190, 190, 190));
 				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
 				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
@@ -588,11 +1323,15 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line + 1][now_column + 1]->getTag() == 1)//被下方挡住
 		{
-			square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 2][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 3][now_column + 1]->setColor(ccc3(190, 190, 190));
-			clearLine(now_line - 3, now_line);
+			checkfail();
+			if (now_line - 3 >= 0)
+			{
+				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 2][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 3][now_column + 1]->setColor(ccc3(190, 190, 190));
+				clearLine(now_line - 3, now_line);
+			}
 			newSquareType();
 			return;
 		}
@@ -626,11 +1365,16 @@ void major::updateDown(float dt)
 		{
 			if (square[now_line + 1][now_column + i]->getTag() == 1)
 			{
-				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
-				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
-				square[now_line][now_column + 2]->setColor(ccc3(190, 190, 190));
-				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-				clearLine(now_line - 1, now_line);
+				checkfail();
+				if (now_line - 1 >= 0)
+				{
+					square[now_line][now_column]->setColor(ccc3(190, 190, 190));
+					square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
+					square[now_line][now_column + 2]->setColor(ccc3(190, 190, 190));
+					square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+
+					clearLine(now_line - 1, now_line);
+				}
 				newSquareType();
 				return;
 			}
@@ -670,11 +1414,16 @@ void major::updateDown(float dt)
 
 		if (square[now_line + 1][now_column]->getTag() == 1 || square[now_line][now_column + 1]->getTag() == 1)//被下方挡住
 		{
-			square[now_line][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 2][now_column]->setColor(ccc3(190, 190, 190));
-			clearLine(now_line - 2, now_line);
+			checkfail();
+			if (now_line - 2 >= 0)
+			{
+				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 2][now_column]->setColor(ccc3(190, 190, 190));
+
+				clearLine(now_line - 2, now_line);
+			}
 			newSquareType();
 			return;
 		}
@@ -714,11 +1463,16 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line][now_column]->getTag() == 1 || square[now_line + 1][now_column + 1]->getTag() == 1 || square[now_line][now_column + 2]->getTag() == 1)//被下方挡住
 		{
-			square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 2]->setColor(ccc3(190, 190, 190));
-			clearLine(now_line - 1, now_line);
+			checkfail();
+			if (now_line - 1 >= 0)
+			{
+				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 2]->setColor(ccc3(190, 190, 190));
+
+				clearLine(now_line - 1, now_line);
+			}
 			newSquareType();
 			return;
 		}
@@ -760,11 +1514,16 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line][now_column]->getTag() == 1 || square[now_line + 1][now_column + 1]->getTag() == 1)
 		{
-			square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 2][now_column + 1]->setColor(ccc3(190, 190, 190));
-			clearLine(now_line - 2, now_line);
+			checkfail();
+			if (now_line - 2 >= 0)
+			{
+				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 2][now_column + 1]->setColor(ccc3(190, 190, 190));
+
+				clearLine(now_line - 2, now_line);
+			}
 			newSquareType();
 			return;
 		}
@@ -805,11 +1564,16 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line][now_column]->getTag() == 1 || square[now_line][now_column+1]->getTag()==1 || square[now_line+1][now_column+2]->getTag()==1)
 		{
-			square[now_line][now_column + 2]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 2]->setColor(ccc3(190, 190, 190));
-			clearLine(now_line - 1, now_line);
+			checkfail();
+			if (now_line - 1 >= 0)
+			{
+				square[now_line][now_column + 2]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 2]->setColor(ccc3(190, 190, 190));
+
+				clearLine(now_line - 1, now_line);
+			}
 		    newSquareType();
 			return;
 		}
@@ -852,11 +1616,16 @@ void major::updateDown(float dt)
 		{
 			if (square[now_line + 1][now_column + i]->getTag() == 1)
 			{
-				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
-				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
-				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-				square[now_line - 2][now_column + 1]->setColor(ccc3(190, 190, 190));
-				clearLine(now_line - 2, now_line);
+				checkfail();
+				if (now_line - 2 >= 0)
+				{
+					square[now_line][now_column]->setColor(ccc3(190, 190, 190));
+					square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
+					square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+					square[now_line - 2][now_column + 1]->setColor(ccc3(190, 190, 190));
+
+					clearLine(now_line - 2, now_line);
+				}
 				newSquareType();
 				return;
 			}
@@ -895,11 +1664,16 @@ void major::updateDown(float dt)
 		{
 			if (square[now_line + 1][now_column + i]->getTag() == 1)
 			{
-				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
-				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
-				square[now_line][now_column + 2]->setColor(ccc3(190, 190, 190));
-				square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
-				clearLine(now_line - 1, now_line);
+				checkfail();
+				if (now_line - 1 >= 0)
+				{
+					square[now_line][now_column]->setColor(ccc3(190, 190, 190));
+					square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
+					square[now_line][now_column + 2]->setColor(ccc3(190, 190, 190));
+					square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
+
+					clearLine(now_line - 1, now_line);
+				}
 				newSquareType();
 				return;
 			}
@@ -938,11 +1712,16 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line + 1][now_column]->getTag() == 1)
 		{
-			square[now_line][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 2][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 2][now_column + 1]->setColor(ccc3(190, 190, 190));
-			clearLine(now_line - 2, now_line);
+			checkfail();
+			if (now_line - 2 >= 0)
+			{
+				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 2][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 2][now_column + 1]->setColor(ccc3(190, 190, 190));
+
+				clearLine(now_line - 2, now_line);
+			}
 			newSquareType();
 			return;
 		}
@@ -993,11 +1772,16 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line + 1][now_column]->getTag() == 1 || square[now_line][now_column+1]->getTag()==1 || square[now_line][now_column+2]->getTag()==1)
 		{
-			square[now_line][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 2]->setColor(ccc3(190, 190, 190));
-			clearLine(now_line - 1, now_line);
+			checkfail();
+			if (now_line - 1 >= 0)
+			{
+				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 2]->setColor(ccc3(190, 190, 190));
+
+				clearLine(now_line - 1, now_line);
+			}
 			newSquareType();
 			return;
 		}
@@ -1036,11 +1820,16 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line+1][now_column+1]->getTag()==1)
      	{
-			square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 2][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 2][now_column + 1]->setColor(ccc3(190, 190, 190));
-			clearLine(now_line - 2, now_line);
+			checkfail();
+			if (now_line - 2 >= 0)
+			{
+				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 2][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 2][now_column + 1]->setColor(ccc3(190, 190, 190));
+
+				clearLine(now_line - 2, now_line);
+			}
 			newSquareType();
 			return;
 		}
@@ -1093,11 +1882,16 @@ void major::updateDown(float dt)
 		{
 			if (square[now_line + 1][now_column + i]->getTag() == 1)
 			{
-				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
-				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
-				square[now_line][now_column + 2]->setColor(ccc3(190, 190, 190));
-				square[now_line - 1][now_column + 2]->setColor(ccc3(190, 190, 190));
-				clearLine(now_line - 1, now_line);
+				checkfail();
+				if (now_line - 1 >= 0)
+				{
+					square[now_line][now_column]->setColor(ccc3(190, 190, 190));
+					square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
+					square[now_line][now_column + 2]->setColor(ccc3(190, 190, 190));
+					square[now_line - 1][now_column + 2]->setColor(ccc3(190, 190, 190));
+
+					clearLine(now_line - 1, now_line);
+				}
 				newSquareType();
 				return;
 			}
@@ -1138,11 +1932,16 @@ void major::updateDown(float dt)
 		{
 			if (square[now_line + 1][now_column + i]->getTag() == 1)
 			{
-				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
-				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
-				square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
-				square[now_line - 2][now_column]->setColor(ccc3(190, 190, 190));
-				clearLine(now_line - 2, now_line);
+				checkfail();
+				if (now_line - 2 >= 0)
+				{
+					square[now_line][now_column]->setColor(ccc3(190, 190, 190));
+					square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
+					square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
+					square[now_line - 2][now_column]->setColor(ccc3(190, 190, 190));
+
+					clearLine(now_line - 2, now_line);
+				}
 				newSquareType();
 				return;
 			}
@@ -1179,11 +1978,16 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line][now_column]->getTag() == 1 || square[now_line+1][now_column+1]->getTag()==1 || square[now_line+1][now_column+2]->getTag()==1)
 		{
-			square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line][now_column + 2]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-			clearLine(now_line - 1, now_line);
+			checkfail();
+			if (now_line - 1 >= 0)
+			{
+				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line][now_column + 2]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+
+				clearLine(now_line - 1, now_line);
+			}
 		    newSquareType();
 			return;
 		}
@@ -1222,11 +2026,16 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line + 1][now_column]->getTag() == 1 || square[now_line][now_column+1]->getTag()==1)
 		{
+			checkfail();
 			square[now_line][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 2][now_column + 1]->setColor(ccc3(190, 190, 190));
-			clearLine(now_line - 2, now_line);
+			if (now_line - 2 >= 0)
+			{
+				square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 2][now_column + 1]->setColor(ccc3(190, 190, 190));
+
+				clearLine(now_line - 2, now_line);
+			}
 			newSquareType();
 			return;
 		}
@@ -1265,11 +2074,16 @@ void major::updateDown(float dt)
 		}
 	    if (square[now_line + 1][now_column]->getTag() == 1 || square[now_line+1][now_column+1]->getTag()==1 || square[now_line][now_column+2]->getTag()==1)
 		{
+			checkfail();
 			square[now_line][now_column]->setColor(ccc3(190, 190, 190));
 			square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 2]->setColor(ccc3(190, 190, 190));
-			clearLine(now_line - 1, now_line);
+			if (now_line - 1 >= 0)
+			{
+				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 2]->setColor(ccc3(190, 190, 190));
+
+				clearLine(now_line - 1, now_line);
+			}
 			newSquareType();
 			return;
 		}
@@ -1280,6 +2094,8 @@ void major::updateDown(float dt)
 			square[now_line + 1][now_column]->setTag(1);
 			square[now_line + 1][now_column + 1]->setColor(ccc3(52, 228, 249));
 			square[now_line + 1][now_column + 1]->setTag(1);
+			square[now_line][now_column + 1]->setColor(ccc3(52, 228, 249));
+			square[now_line][now_column + 1]->setTag(1);
 			square[now_line][now_column + 2]->setColor(ccc3(52, 228, 249));
 			square[now_line][now_column + 2]->setTag(1);
 
@@ -1309,11 +2125,19 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line][now_column]->getTag() == 1 || square[now_line+1][now_column+1]->getTag()==1)
 		{
+			checkfail();
 			square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
-			square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
-			square[now_line - 2][now_column]->setColor(ccc3(190, 190, 190));
-			clearLine(now_line - 2, now_line);
+			if (now_line - 1 >= 0)
+			{
+				square[now_line - 1][now_column]->setColor(ccc3(190, 190, 190));
+				square[now_line - 1][now_column + 1]->setColor(ccc3(190, 190, 190));
+			}
+			if (now_line - 2 >= 0)
+			{
+				square[now_line - 2][now_column]->setColor(ccc3(190, 190, 190));
+
+				clearLine(now_line - 2, now_line);
+			}
 			newSquareType();
 			return;
 		}
@@ -1840,11 +2664,11 @@ void major::updateLeft()
 		break;
 
 	case 17:
-		if (now_column - 1 < 0 || square[now_line - 1][now_column]->getTag() == 1 )
+		if (now_column - 1 < 0 || square[now_line][now_column - 1]->getTag() == 1 )
 			return;
 		if (now_line - 1 >= 0)
 		{
-			if (square[now_line][now_column - 1]->getTag() == 1)
+			if (square[now_line - 1][now_column]->getTag() == 1)
 				return;
 		}
 		square[now_line][now_column - 1]->setColor(ccc3(52, 225, 249));
@@ -2132,7 +2956,7 @@ void major::updateRight()
 		break;
 
 	case 8:
-		if (now_column + 3 > COLUMN - 1 || square[now_line][now_column + 2]->getTag() == 1)
+		if (now_column + 2 > COLUMN - 1 || square[now_line][now_column + 2]->getTag() == 1)
 			return;
 		if (now_line - 1 >= 0)
 		{
@@ -2388,7 +3212,7 @@ void major::updateRight()
 		break;
 
 	case 16:
-		if (now_column + 3 > COLUMN-1 || square[now_line][now_column + 1]->getTag() == 1)
+		if (now_column + 2 > COLUMN-1 || square[now_line][now_column + 1]->getTag() == 1)
 			return;
 		if (now_line - 1 >= 0)
 		{
@@ -2500,6 +3324,7 @@ void major::updateRight()
 
 void major::checkfail()
 {
+	CCLOG("%d %d", now_squaretype,now_line);
 	switch (now_squaretype)
 	{
 	case 0:
@@ -2607,3 +3432,46 @@ void major::updatescore()
 	sprintf(buf, "%d", now_score);
 	score_label->setString(buf);
 }
+
+void major::gameover()
+{ 
+	unschedule(schedule_selector(major::updateDown));
+	CCUserDefault::sharedUserDefault()->setIntegerForKey("now_score", now_score);
+	auto GameOverScene = gameover::create();
+	Director::getInstance()->replaceScene(TransitionCrossFade::create(1.0f,GameOverScene));
+};
+
+void major::pause_game(cocos2d::Object* pSender)
+{
+	if (is_game)
+	{
+		auto rect = Director::getInstance()->getOpenGLView()->getVisibleRect();
+		float x = rect.origin.x + rect.size.width / 2;
+		float y = rect.origin.y + rect.size.height / 2;
+		pause_image = Sprite::create("pause.png");
+		pause_image->setPosition(Vec2(x,y));
+		pause_image->setScale(3.0f);
+		this->addChild(pause_image, 10);
+		Director::getInstance()->pause();
+		//unschedule(schedule_selector(major::updateDown));
+		//dispatcher->removeEventListener(myKeyListener);
+		//removeEventListenerWithSceneGraphPriority(myKeyListener, this);
+		is_game = false;
+	}
+	
+}
+
+void major::resume_game(cocos2d::Object* pSender)
+{
+	if (!is_game)
+	{
+		schedule(schedule_selector(major::updateDown), speed / (now_score + 5));
+		this->removeChild(pause_image);
+		Director::getInstance()->resume();
+		//dispatcher->addEventListenerWithSceneGraphPriority(myKeyListener, this);
+		//dispatcher->addEventListener(myKeyListener);
+		is_game = true;
+	}
+}
+
+

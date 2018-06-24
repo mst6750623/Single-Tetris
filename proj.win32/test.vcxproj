@@ -152,16 +152,20 @@ xcopy "$(ProjectDir)..\Resources" "$(OutDir)" /D /E /I /F /Y
     <ClCompile Include="..\Classes\AppDelegate.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">E:\test\proj.win32\myscene.h;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <ClCompile Include="..\Classes\gameoverscene.cpp" />
     <ClCompile Include="..\Classes\HelloWorldScene.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">E:\test\proj.win32\myscene.h;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <ClCompile Include="..\Classes\major.cpp" />
+    <ClCompile Include="..\Classes\rankinglist.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Classes\AppDelegate.h" />
+    <ClInclude Include="..\Classes\gameoverscene.h" />
     <ClInclude Include="..\Classes\HelloWorldScene.h" />
     <ClInclude Include="..\Classes\major.h" />
+    <ClInclude Include="..\Classes\rankinglist.h" />
     <ClInclude Include="main.h" />
   </ItemGroup>
   <ItemGroup>
