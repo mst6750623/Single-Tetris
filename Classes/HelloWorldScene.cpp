@@ -1,6 +1,8 @@
 #include "HelloWorldScene.h"
 #include "SimpleAudioEngine.h"
 #include "major.h"
+#include "gameoverscene.h"
+#include "rankinglist.h"
 
 USING_NS_CC;
 
@@ -8,6 +10,14 @@ Scene* HelloWorld::createScene()
 {
     return HelloWorld::create();
 }
+
+HelloWorld::HelloWorld()
+{
+	is_paused = false;
+	CocosDenshion::SimpleAudioEngine::sharedEngine()->playBackgroundMusic("1(2).mp3", true);
+}
+HelloWorld::~HelloWorld()
+{ }
 
 // Print useful error message instead of segfaulting when files are not there.
 static void problemLoading(const char* filename)
@@ -57,18 +67,12 @@ bool HelloWorld::init()
     auto menu = Menu::create(closeItem, NULL);
     menu->setPosition(Vec2::ZERO);
     this->addChild(menu, 1);
-
-	is_paused = false;
-	auto* play = MenuItemImage::create("start.png","start.png" ,this, menu_selector(HelloWorld::play));
-	play->setPosition(Vec2(visibleSize.width / 2 + origin.x - 320, visibleSize.height / 2 + origin.y - 310));
-	play->setScale(1.0f);
-	auto* pause = MenuItemImage::create("pause.png", "pause.png", this, menu_selector(HelloWorld::pause));
-	pause->setPosition(Vec2(visibleSize.width / 2 + origin.x - 305, visibleSize.height / 2 + origin.y - 308));
-	pause->setScale(1.0f);
+   
+	auto* play = MenuItemImage::create("music1.png","music1.png" ,this, menu_selector(HelloWorld::pause));
+	play->setPosition(Vec2(visibleSize.width / 2 + origin.x - 330, visibleSize.height / 2 + origin.y - 300));
+	play->setScale(0.3f);
 	auto* pplay = Menu::create(play, NULL);
-	auto* ppause = Menu::create(pause, NULL);
 	addChild(pplay,2);
-	addChild(ppause, 2);
     /////////////////////////////
     // 3. add your codes below...
 
@@ -90,16 +94,28 @@ bool HelloWorld::init()
         this->addChild(label, 1);
     }
 
-	auto start = LabelTTF::create("START", "Arial", 30);
+	auto start = LabelTTF::create("START", "Arial", 40);
 	auto pstart = MenuItemLabel::create(start, this, menu_selector(HelloWorld::menuItemSettingCallback));
 	auto ppstart = Menu::create(pstart, NULL);
 	ppstart->setPosition(Vec2(origin.x + visibleSize.width / 2,
-		origin.y + visibleSize.height - start->getContentSize().height - 150));
+		origin.y + visibleSize.height - start->getContentSize().height - 110   ));
 	this->addChild(ppstart, 2);
 
-
+	auto Help = LabelTTF::create("HELP", "Arial", 30);
+	auto pHelp = MenuItemLabel::create(Help, CC_CALLBACK_1(HelloWorld::switchtoHELP,this));
+	auto ppHelp = Menu::create(pHelp, NULL);
+	ppHelp->setPosition(Vec2(origin.x + visibleSize.width / 2,
+		origin.y + visibleSize.height - start->getContentSize().height - 160));
+	this->addChild(ppHelp, 2);
+	
+	auto ranking = LabelTTF::create("Ranking List", "Arial", 25);
+	auto pranking = MenuItemLabel::create(ranking, CC_CALLBACK_1(HelloWorld::swtichtorank, this));
+	auto ppranking = Menu::create(pranking, NULL);
+	ppranking->setPosition(Vec2(origin.x + visibleSize.width / 2,
+		origin.y + visibleSize.height - start->getContentSize().height - 210));
+	this->addChild(ppranking, 2);
     // add "HelloWorld" splash screen"
-    auto sprite = Sprite::create("background.jpg");
+    auto sprite = Sprite::create("game1.jpg");
     if (sprite == nullptr)
     {
         problemLoading("'background.jpg'");
@@ -113,6 +129,8 @@ bool HelloWorld::init()
         // add the sprite as a child to this layer
         this->addChild(sprite, 0);
     }
+
+	//this->addChild(help::create());
     return true;
 }
 
@@ -140,9 +158,10 @@ void HelloWorld::play(cocos2d::Object* pSender)
 	if (is_paused)
 	{
 		CocosDenshion::SimpleAudioEngine::sharedEngine()->resumeBackgroundMusic();
+		removeChild(ppause);
 	}
 	else {
-		CocosDenshion::SimpleAudioEngine::sharedEngine()->playBackgroundMusic("mobanche.wav");
+		CocosDenshion::SimpleAudioEngine::sharedEngine()->playBackgroundMusic("1(2).mp3" ,true );
 		CocosDenshion::SimpleAudioEngine::sharedEngine()->getBackgroundMusicVolume();
 	}
 	is_paused = false;
@@ -152,12 +171,63 @@ void HelloWorld::pause(cocos2d::Object* pSender)
 {
 	is_paused = true;
 	CocosDenshion::SimpleAudioEngine::sharedEngine()->pauseBackgroundMusic();
+	auto* pause = MenuItemImage::create("music2.png", "music2.png", this, menu_selector(HelloWorld::play));
+	pause->setPosition(Vec2(-86.5,-140));
+	pause->setScale(0.3f);
+	ppause = Menu::create(pause, NULL);
+	addChild(ppause, 4);
 }
 
 void HelloWorld::menuItemSettingCallback(Ref* pSender)
 {
 	
 	MenuItem* item = (MenuItem*)pSender;
-	auto sc = major::create();
-	Director::getInstance()->pushScene(sc);
+	Director::getInstance()->replaceScene(TransitionSlideInB::create(0.5f,major::createScene()));
+}
+
+void HelloWorld::swtichtorank(cocos2d::Ref* pSender)
+{
+	Director::getInstance()->replaceScene(TransitionFadeDown::create(0.5f, RankingList::createScene()));
+}
+
+
+void HelloWorld::switchtoHELP(cocos2d::Object* pSender)
+{
+	this->addChild(help::create(),5);
+	//Director::getInstance()->pushScene(help::create());
+}
+
+Scene* help::createScene()
+{
+	auto scene = Scene::create();
+	auto first_layer = help::create();
+	scene->addChild(first_layer);
+	return scene;
+}
+
+bool help::init()
+{
+	auto rect = Director::getInstance()->getOpenGLView()->getVisibleRect();
+	float x = rect.origin.x + rect.size.width / 2;
+	float y = rect.origin.y + rect.size.height / 2-20; 
+	sprite2 = Sprite::create("help.png");
+	sprite2->setPosition(Vec2(x,y));
+	sprite2->setScale(2.0f);
+	this->addChild(sprite2,5);
+
+	back = MenuItemImage::create("back1.png", "back2.png",
+		CC_CALLBACK_1(help::menuOKCallback, this));
+	pback = Menu::create(back, NULL);
+	pback->setPosition(Vec2(-30, 100));
+	pback->setScale(0.3f);
+	this->addChild(pback, 5);
+
+	return true;
+}
+
+void help::menuOKCallback(cocos2d::Ref* pSender)
+{
+	removeChild(sprite2, false);
+	removeChild(pback, false);
+	//Director::getInstance()->popScene();
 }
