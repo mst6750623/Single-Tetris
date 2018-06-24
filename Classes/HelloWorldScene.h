@@ -16,13 +16,22 @@ public:
     // a selector callback
     void menuCloseCallback(cocos2d::Ref* pSender);
 	void menuItemSettingCallback(cocos2d::Ref* pSender);
+	void menuItemChangeslowspeed(cocos2d::Ref* pSender);
+	void menuItemChangemediumspeed(cocos2d::Ref* pSender);
+	void menuItemChangefastspeed(cocos2d::Ref* pSender);
 	void switchtoHELP(cocos2d::Object* pSender);
 	void swtichtorank(cocos2d::Ref* pSender);
+	void swtichtospeed(cocos2d::Ref* pSender);
 	
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
 	void onWin32KeyEvent(UINT message, WPARAM wParam, LPARAM lParam);
 #endif
 	bool is_paused;
+	float rank;
+	cocos2d::Sprite *sprite;
+	cocos2d::Menu* ppslow;
+	cocos2d::Menu* ppmedium;
+	cocos2d::Menu* ppfast;
 	cocos2d::Menu * ppause;
 	void play(cocos2d::Object* pSender);
 	void pause(cocos2d::Object* pSender);

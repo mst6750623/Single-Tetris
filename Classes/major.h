@@ -16,28 +16,26 @@ public:
 	major();
 	~major();
 	virtual bool init();
-	void menuCloseCallback(cocos2d::Ref* pSender);
-
-	bool is_paused;
-	void play(cocos2d::Object* pSender);
-	void pause(cocos2d::Object* pSender);
-	void menuOKCallback(cocos2d::Ref* pSender);
-	void Clearline_music();
-	void pause_game(cocos2d::Object* pSender);
-	void resume_game(cocos2d::Object* pSender);
+	void menuCloseCallback(cocos2d::Ref* pSender);//关闭界面按钮
+	void play(cocos2d::Object* pSender);//音乐播放
+	void pause(cocos2d::Object* pSender);//音乐暂停
+	void menuOKCallback(cocos2d::Ref* pSender);//回到主界面按钮
+	void Clearline_music();//消除行的音乐
+	void pause_game(cocos2d::Object* pSender);//游戏暂停
+	void resume_game(cocos2d::Object* pSender);//游戏继续
 	CREATE_FUNC(major);
 
-	void clearLine(int start_line, int end_line);
-	void copyline(int line_num);
-	void newSquareType();
-	void nextSquareType();
-	void updateDown(float dt);
-	void updateLeft();
-	void updateRight();
-	void checkfail();
-	void updatescore();
-	void gameover();
-	void update(float delta);
+	void clearLine(int start_line, int end_line);//消除行
+	void copyline(int line_num);//向下复制
+	void newSquareType();//生成新方块
+	void nextSquareType();//方块变换
+	void updateDown(float dt);//向下移动
+	void updateLeft();//向左移动
+	void updateRight();//向右移动
+	void checkfail();//判定是否游戏结束
+	void updatescore();//更新分数
+	void gameover();//游戏结束
+	void update(float delta);//重写update函数实现键盘按下事件
 
 	cocos2d::Sprite* square[LINE][COLUMN];
 	cocos2d::Sprite* next_square[4][4];
@@ -46,8 +44,9 @@ public:
 	int now_squaretype;
 	int next_squaretype;
 	int now_score;
+	bool is_paused;
 	bool is_game;
-	float speed = 3.0f;
+	float speed;
 	cocos2d::Menu * ppause;
 	cocos2d::Sprite* pause_image;
 	cocos2d::LabelTTF* score_label;

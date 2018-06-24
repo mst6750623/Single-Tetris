@@ -16,7 +16,6 @@ gameover::gameover()
 
 gameover::~gameover()
 {
-	CCLOG("stop!");
 }
 
 Scene* gameover::createScene()
@@ -40,18 +39,12 @@ bool gameover::init()
 	{
 		return false;
 	}
-	log("%s", FileUtils::getInstance()->getWritablePath().c_str());
 	auto sprite = Sprite::create("gameover.jpg");
 	sprite->setScale(2.0f);
 	sprite->setPosition(Vec2(240,200));
 	this->addChild(sprite, 0);
 
-	//CCLOG("now_score is %d  %d %d %d",now_score, top_score[0],top_score[1],top_score[2]);
-	//CCLOG("%s", CCUserDefault::sharedUserDefault()->getStringForKey("name1"));
-		//CCUserDefault::sharedUserDefault()->getStringForKey("name2"),
-		//CCUserDefault::sharedUserDefault()->getStringForKey("name3"));*/
-	//CCUserDefault::sharedUserDefault()->setIntegerForKey("score3", now_score);
-	//getXMLFilePath
+	
 	
 	if (now_score > top_score[2])
 	{
@@ -59,7 +52,6 @@ bool gameover::init()
 		name->setPosition(Vec2(240, 170));
 		name->setColor(ccc3(99, 184, 255));
 		this->addChild(name, 2);
-		CCLOG("ok");
 		editbox1->setPosition(Vec2(240, 150));
 		editbox1->setPlaceHolder("Name");
 		editbox1->setMaxLength(15);

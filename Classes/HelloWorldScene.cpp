@@ -114,6 +114,14 @@ bool HelloWorld::init()
 	ppranking->setPosition(Vec2(origin.x + visibleSize.width / 2,
 		origin.y + visibleSize.height - start->getContentSize().height - 210));
 	this->addChild(ppranking, 2);
+
+	auto speed_change = LabelTTF::create("Change Speed", "Arial", 25);
+	auto pspeed_change = MenuItemLabel::create(speed_change, CC_CALLBACK_1(HelloWorld::swtichtospeed, this));
+	auto ppspeed_change = Menu::create(pspeed_change, NULL);
+	ppspeed_change->setPosition(Vec2(origin.x + visibleSize.width / 2,
+		origin.y + visibleSize.height - start->getContentSize().height - 260));
+	this->addChild(ppspeed_change, 2);
+
     // add "HelloWorld" splash screen"
     auto sprite = Sprite::create("game1.jpg");
     if (sprite == nullptr)
@@ -195,6 +203,63 @@ void HelloWorld::switchtoHELP(cocos2d::Object* pSender)
 {
 	this->addChild(help::create(),5);
 	//Director::getInstance()->pushScene(help::create());
+}
+
+void HelloWorld::swtichtospeed(cocos2d::Ref* pSender)
+{
+	auto rect = Director::getInstance()->getOpenGLView()->getVisibleRect();
+	float x = rect.origin.x + rect.size.width / 2;
+	float y = rect.origin.y + rect.size.height / 2 - 20;
+	sprite = Sprite::create("changespeed.jpg");
+	sprite->setPosition(Vec2(x, y));
+	sprite->setScale(2.0f);
+	this->addChild(sprite, 5);
+
+	auto slow = LabelTTF::create("SLOW", "Arial", 15);
+	auto pslow = MenuItemLabel::create(slow, CC_CALLBACK_1(HelloWorld::menuItemChangeslowspeed,this));
+	ppslow = Menu::create(pslow, NULL);
+	ppslow->setPosition(Vec2(x,y+10));
+	this->addChild(ppslow, 5);
+
+	auto medium = LabelTTF::create("MEDIUM", "Arial", 15);
+	auto pmedium = MenuItemLabel::create(medium, CC_CALLBACK_1(HelloWorld::menuItemChangemediumspeed, this));
+	ppmedium = Menu::create(pmedium, NULL);
+	ppmedium->setPosition(Vec2(x , y - 20));
+	this->addChild(ppmedium, 5);
+
+	auto fast = LabelTTF::create("FAST", "Arial", 15);
+	auto pfast = MenuItemLabel::create(fast, CC_CALLBACK_1(HelloWorld::menuItemChangefastspeed, this));
+    ppfast = Menu::create(pfast, NULL);
+	ppfast->setPosition(Vec2(x, y - 50));
+	this->addChild(ppfast, 5);
+}
+
+
+void HelloWorld::menuItemChangeslowspeed(cocos2d::Ref* pSender)
+{
+	removeChild(sprite, false);
+	removeChild(ppslow, false);
+	removeChild(ppmedium, false);
+	removeChild(ppfast, false);
+	CCUserDefault::sharedUserDefault()->setFloatForKey("speed", 4.5f);
+}
+
+void HelloWorld::menuItemChangemediumspeed(cocos2d::Ref* pSender)
+{
+	removeChild(sprite, false);
+	removeChild(ppslow, false);
+	removeChild(ppmedium, false);
+	removeChild(ppfast, false);
+	CCUserDefault::sharedUserDefault()->setFloatForKey("speed", 2.5f);
+}
+
+void HelloWorld::menuItemChangefastspeed(cocos2d::Ref* pSender)
+{
+	removeChild(sprite, false);
+	removeChild(ppslow, false);
+	removeChild(ppmedium, false);
+	removeChild(ppfast, false);
+	CCUserDefault::sharedUserDefault()->setFloatForKey("speed", 1.0f);
 }
 
 Scene* help::createScene()

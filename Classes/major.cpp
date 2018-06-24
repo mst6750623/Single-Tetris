@@ -21,8 +21,7 @@ major::major()
 	next_squaretype = rand() % 19;
 	score_label = NULL;
 	is_game = true;
-
-
+    speed = CCUserDefault::sharedUserDefault()->getFloatForKey("speed");
 }
 
 major::~major()
@@ -104,7 +103,6 @@ bool major::init()
 		"CloseSelected.png",
 		"CloseSelected.png", this,
 		menu_selector(major::menuCloseCallback));
-	//CC_CALLBACK_1(Login::menuCloseCallback, this)
 	if (closeItem == nullptr ||
 		closeItem->getContentSize().width <= 0 ||
 		closeItem->getContentSize().height <= 0)
@@ -132,13 +130,14 @@ bool major::init()
 	addChild(phome, 2);
 
 	//添加背景音乐按钮
+	is_paused = true;
 	auto* play = MenuItemImage::create("music1.png", "music1.png", this, menu_selector(major::pause));
 	play->setPosition(Vec2(visibleSize.width / 2 + origin.x - 348.5, visibleSize.height / 2 + origin.y - 220));
 	play->setScale(0.3f);
 	auto* pplay = Menu::create(play, NULL);
 	addChild(pplay, 2);
 
-	is_paused = true;
+	//添加开始和暂停游戏按钮
 	auto* play_game = MenuItemImage::create("start.png", "start.png", this, menu_selector(major::resume_game));
 	play_game->setPosition(Vec2(visibleSize.width / 2 + origin.x - 340, visibleSize.height / 2 + origin.y - 310));
 	play_game->setScale(1.3f);
@@ -178,10 +177,8 @@ bool major::init()
 	//添加到事件分发器  
 	dispatcher->addEventListenerWithSceneGraphPriority(myKeyListener, this);
 	this->scheduleUpdate();
-
-	newSquareType();
 	
-	//speed = speed / (now_score+5);
+	newSquareType();
 	schedule(schedule_selector(major::updateDown), speed / (now_score + 5));
 
 	return true;
@@ -3324,7 +3321,6 @@ void major::updateRight()
 
 void major::checkfail()
 {
-	CCLOG("%d %d", now_squaretype,now_line);
 	switch (now_squaretype)
 	{
 	case 0:
