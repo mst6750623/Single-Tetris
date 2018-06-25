@@ -69,7 +69,7 @@ bool HelloWorld::init()
     this->addChild(menu, 1);
    
 	auto* play = MenuItemImage::create("music1.png","music1.png" ,this, menu_selector(HelloWorld::pause));
-	play->setPosition(Vec2(visibleSize.width / 2 + origin.x - 330, visibleSize.height / 2 + origin.y - 300));
+	play->setPosition(Vec2(visibleSize.width / 2 + origin.x - 340, visibleSize.height / 2 + origin.y - 300));
 	play->setScale(0.3f);
 	auto* pplay = Menu::create(play, NULL);
 	addChild(pplay,2);
@@ -180,7 +180,7 @@ void HelloWorld::pause(cocos2d::Object* pSender)
 	is_paused = true;
 	CocosDenshion::SimpleAudioEngine::sharedEngine()->pauseBackgroundMusic();
 	auto* pause = MenuItemImage::create("music2.png", "music2.png", this, menu_selector(HelloWorld::play));
-	pause->setPosition(Vec2(-86.5,-140));
+	pause->setPosition(Vec2(-96.5,-140));
 	pause->setScale(0.3f);
 	ppause = Menu::create(pause, NULL);
 	addChild(ppause, 4);
