@@ -123,9 +123,8 @@ void gameover::save(cocos2d::Object* pSender)
 		string name1 = "NULL";
 		name1 = editbox1->getText();
 		CCUserDefault::sharedUserDefault()->setStringForKey("name1", name1);
-
-		Director::getInstance()->replaceScene(TransitionFadeDown::create(0.3f, RankingList::createScene()));
 	}
+	Director::getInstance()->replaceScene(TransitionFadeDown::create(0.3f, RankingList::createScene()));
 }
 
 void gameover::menuOKCallback(cocos2d::Ref* pSender)
