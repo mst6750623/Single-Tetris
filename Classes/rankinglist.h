@@ -21,6 +21,7 @@ public:
 	void save(cocos2d::Ref* pSender);
 	void menuOKCallback(cocos2d::Ref* pSender);
 	void menuItemSettingCallback(cocos2d::Ref* pSender);
+	void clearAll(cocos2d::Object* pSender);
 	// implement the "static create()" method manually
 	CREATE_FUNC(RankingList);
 

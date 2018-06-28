@@ -42,7 +42,7 @@ bool gameover::init()
 	auto sprite = Sprite::create("gameover.jpg");
 	sprite->setScale(2.0f);
 	sprite->setPosition(Vec2(240,200));
-	this->addChild(sprite, 0);
+	addChild(sprite, 0);
 
 	
 	
@@ -70,7 +70,7 @@ bool gameover::init()
 	auto *phomebutton = Menu::create(homebutton, NULL);
 	phomebutton->setPosition(Vec2(0, 200));
 	phomebutton->setScale(0.4f);
-	this->addChild(phomebutton, 1);
+	addChild(phomebutton, 1);
 	return true;
 }
 
@@ -124,6 +124,7 @@ void gameover::save(cocos2d::Object* pSender)
 		name1 = editbox1->getText();
 		CCUserDefault::sharedUserDefault()->setStringForKey("name1", name1);
 	}
+	
 	Director::getInstance()->replaceScene(TransitionFadeDown::create(0.3f, RankingList::createScene()));
 }
 

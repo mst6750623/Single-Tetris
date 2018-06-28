@@ -21,7 +21,12 @@ major::major()
 	next_squaretype = rand() % 19;
 	score_label = NULL;
 	is_game = true;
-    speed = CCUserDefault::sharedUserDefault()->getFloatForKey("speed");
+	if (CCUserDefault::sharedUserDefault()->getFloatForKey("speed") > 4.5f || CCUserDefault::sharedUserDefault()->getFloatForKey("speed") < 1.0f)
+		speed = 3.0f;
+	else
+	{
+		speed = CCUserDefault::sharedUserDefault()->getFloatForKey("speed");
+	}
 }
 
 major::~major()
@@ -78,7 +83,7 @@ bool major::init()
 			next_square[i][j]->setPosition(Vec2(310+ 14 * j, 200 - 14 * i));
 			next_square[i][j]->setScale(3.0f);
 			next_square[i][j]->setColor(ccc3(255,255,255));
-			this->addChild(next_square[i][j]);
+			addChild(next_square[i][j]);
 		}
 	}
 
@@ -92,7 +97,7 @@ bool major::init()
 			square[i][j]->setPosition(Vec2(160+14.5*j,310-14.5*i));
 			square[i][j]->setTag(0);
 			square[i][j]->setColor(ccc3(255, 255, 255));
-			this->addChild(square[i][j],5);
+			addChild(square[i][j],5);
 		}
 	}
 
@@ -119,7 +124,7 @@ bool major::init()
 	// create menu, it's an autorelease object
 	auto menu = Menu::create(closeItem, NULL);
 	menu->setPosition(Vec2::ZERO);
-	this->addChild(menu, 1);
+	addChild(menu, 1);
 
 	/////////////////////////////
     //添加回到主界面按钮
@@ -160,60 +165,43 @@ bool major::init()
 	myKeyListener->onKeyPressed = [=](EventKeyboard::KeyCode keycode, cocos2d::Event *event)
 	{
 		key[keycode] = true;
-		switch (keycode)
-		{
-		case EventKeyboard::KeyCode::KEY_SPACE://change
+		if (keycode == EventKeyboard::KeyCode::KEY_SPACE)
 			nextSquareType();
-			break;
-		case EventKeyboard::KeyCode::KEY_UP_ARROW://fast down
-			updateDown(0.0);
-			updateDown(0.0);
-			updateDown(0.0);
-			break;
-		}
 	};
 	dispatcher = Director::getInstance()->getEventDispatcher();
 
 	//添加到事件分发器  
 	dispatcher->addEventListenerWithSceneGraphPriority(myKeyListener, this);
-	this->scheduleUpdate();
+	this->schedule(schedule_selector(major::myupdate), 0.1f);
 	
 	newSquareType();
 	schedule(schedule_selector(major::updateDown), speed / (now_score + 5));
-
+	
 	return true;
 }
 
-void major::update(float delta)//重写update函数
+void major::myupdate(float delta)//重写update函数
 {
 	if (is_game)
 	{
-		Node::update(delta);
 		if (key[EventKeyboard::KeyCode::KEY_DOWN_ARROW])
 		{
 			updateDown(0.0);
-			Sleep(50);
 		}
-		else if (key[EventKeyboard::KeyCode::KEY_LEFT_ARROW])
+		if (key[EventKeyboard::KeyCode::KEY_LEFT_ARROW])
 		{
 			updateLeft();
-			Sleep(80);
 		}
-		else if (key[EventKeyboard::KeyCode::KEY_RIGHT_ARROW])
+		if (key[EventKeyboard::KeyCode::KEY_RIGHT_ARROW])
 		{
 			updateRight();
-			Sleep(80);
 		}
-		/*else if (key[EventKeyboard::KeyCode::KEY_UP_ARROW])
+		if (key[EventKeyboard::KeyCode::KEY_UP_ARROW])
 		{
 			updateDown(0.0);
-			Sleep(50);
+			updateDown(0.0);
+			updateDown(0.0);
 		}
-		else if (key[EventKeyboard::KeyCode::KEY_SPACE])
-		{
-			nextSquareType();
-			Sleep(50);
-		}*/
 	}
 }
 
@@ -1238,7 +1226,7 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line + 1][now_column]->getTag() == 1 || square[now_line + 1][now_column + 1]->getTag() == 1)//被下方挡住
 		{
-			checkfail();
+			is_fail();
 			if (now_line - 1 >= 0)
 			{
 				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
@@ -1282,7 +1270,7 @@ void major::updateDown(float dt)
 		{
 			if (square[now_line + 1][now_column + i]->getTag() == 1)
 			{
-				checkfail();
+				is_fail();
 				square[now_line][now_column - 1]->setColor(ccc3(190, 190, 190));
 				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
 				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
@@ -1320,7 +1308,7 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line + 1][now_column + 1]->getTag() == 1)//被下方挡住
 		{
-			checkfail();
+			is_fail();
 			if (now_line - 3 >= 0)
 			{
 				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
@@ -1362,7 +1350,7 @@ void major::updateDown(float dt)
 		{
 			if (square[now_line + 1][now_column + i]->getTag() == 1)
 			{
-				checkfail();
+				is_fail();
 				if (now_line - 1 >= 0)
 				{
 					square[now_line][now_column]->setColor(ccc3(190, 190, 190));
@@ -1411,7 +1399,7 @@ void major::updateDown(float dt)
 
 		if (square[now_line + 1][now_column]->getTag() == 1 || square[now_line][now_column + 1]->getTag() == 1)//被下方挡住
 		{
-			checkfail();
+			is_fail();
 			if (now_line - 2 >= 0)
 			{
 				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
@@ -1460,7 +1448,7 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line][now_column]->getTag() == 1 || square[now_line + 1][now_column + 1]->getTag() == 1 || square[now_line][now_column + 2]->getTag() == 1)//被下方挡住
 		{
-			checkfail();
+			is_fail();
 			if (now_line - 1 >= 0)
 			{
 				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
@@ -1511,7 +1499,7 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line][now_column]->getTag() == 1 || square[now_line + 1][now_column + 1]->getTag() == 1)
 		{
-			checkfail();
+			is_fail();
 			if (now_line - 2 >= 0)
 			{
 				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
@@ -1561,7 +1549,7 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line][now_column]->getTag() == 1 || square[now_line][now_column+1]->getTag()==1 || square[now_line+1][now_column+2]->getTag()==1)
 		{
-			checkfail();
+			is_fail();
 			if (now_line - 1 >= 0)
 			{
 				square[now_line][now_column + 2]->setColor(ccc3(190, 190, 190));
@@ -1613,7 +1601,7 @@ void major::updateDown(float dt)
 		{
 			if (square[now_line + 1][now_column + i]->getTag() == 1)
 			{
-				checkfail();
+				is_fail();
 				if (now_line - 2 >= 0)
 				{
 					square[now_line][now_column]->setColor(ccc3(190, 190, 190));
@@ -1661,7 +1649,7 @@ void major::updateDown(float dt)
 		{
 			if (square[now_line + 1][now_column + i]->getTag() == 1)
 			{
-				checkfail();
+				is_fail();
 				if (now_line - 1 >= 0)
 				{
 					square[now_line][now_column]->setColor(ccc3(190, 190, 190));
@@ -1709,7 +1697,7 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line + 1][now_column]->getTag() == 1)
 		{
-			checkfail();
+			is_fail();
 			if (now_line - 2 >= 0)
 			{
 				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
@@ -1769,7 +1757,7 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line + 1][now_column]->getTag() == 1 || square[now_line][now_column+1]->getTag()==1 || square[now_line][now_column+2]->getTag()==1)
 		{
-			checkfail();
+			is_fail();
 			if (now_line - 1 >= 0)
 			{
 				square[now_line][now_column]->setColor(ccc3(190, 190, 190));
@@ -1817,7 +1805,7 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line+1][now_column+1]->getTag()==1)
      	{
-			checkfail();
+			is_fail();
 			if (now_line - 2 >= 0)
 			{
 				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
@@ -1879,7 +1867,7 @@ void major::updateDown(float dt)
 		{
 			if (square[now_line + 1][now_column + i]->getTag() == 1)
 			{
-				checkfail();
+				is_fail();
 				if (now_line - 1 >= 0)
 				{
 					square[now_line][now_column]->setColor(ccc3(190, 190, 190));
@@ -1929,7 +1917,7 @@ void major::updateDown(float dt)
 		{
 			if (square[now_line + 1][now_column + i]->getTag() == 1)
 			{
-				checkfail();
+				is_fail();
 				if (now_line - 2 >= 0)
 				{
 					square[now_line][now_column]->setColor(ccc3(190, 190, 190));
@@ -1975,7 +1963,7 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line][now_column]->getTag() == 1 || square[now_line+1][now_column+1]->getTag()==1 || square[now_line+1][now_column+2]->getTag()==1)
 		{
-			checkfail();
+			is_fail();
 			if (now_line - 1 >= 0)
 			{
 				square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
@@ -2023,7 +2011,7 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line + 1][now_column]->getTag() == 1 || square[now_line][now_column+1]->getTag()==1)
 		{
-			checkfail();
+			is_fail();
 			square[now_line][now_column]->setColor(ccc3(190, 190, 190));
 			if (now_line - 2 >= 0)
 			{
@@ -2071,7 +2059,7 @@ void major::updateDown(float dt)
 		}
 	    if (square[now_line + 1][now_column]->getTag() == 1 || square[now_line+1][now_column+1]->getTag()==1 || square[now_line][now_column+2]->getTag()==1)
 		{
-			checkfail();
+			is_fail();
 			square[now_line][now_column]->setColor(ccc3(190, 190, 190));
 			square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
 			if (now_line - 1 >= 0)
@@ -2122,7 +2110,7 @@ void major::updateDown(float dt)
 		}
 		if (square[now_line][now_column]->getTag() == 1 || square[now_line+1][now_column+1]->getTag()==1)
 		{
-			checkfail();
+			is_fail();
 			square[now_line][now_column + 1]->setColor(ccc3(190, 190, 190));
 			if (now_line - 1 >= 0)
 			{
@@ -2670,7 +2658,7 @@ void major::updateLeft()
 		}
 		square[now_line][now_column - 1]->setColor(ccc3(52, 225, 249));
 		square[now_line][now_column - 1]->setTag(1);
-		if (now_line - 1 > 0)
+		if (now_line - 1 >= 0)
 		{
 			square[now_line - 1][now_column]->setColor(ccc3(52, 225, 249));
 			square[now_line - 1][now_column]->setTag(1);
@@ -3319,7 +3307,7 @@ void major::updateRight()
 	}
 }
 
-void major::checkfail()
+void major::is_fail()
 {
 	switch (now_squaretype)
 	{

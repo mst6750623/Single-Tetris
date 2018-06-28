@@ -32,10 +32,10 @@ public:
 	void updateDown(float dt);//向下移动
 	void updateLeft();//向左移动
 	void updateRight();//向右移动
-	void checkfail();//判定是否游戏结束
+	void is_fail();//判定是否游戏结束
 	void updatescore();//更新分数
 	void gameover();//游戏结束
-	void update(float delta);//重写update函数实现键盘按下事件
+	void myupdate(float delta);//重写update函数实现键盘按下事件
 
 	cocos2d::Sprite* square[LINE][COLUMN];
 	cocos2d::Sprite* next_square[4][4];

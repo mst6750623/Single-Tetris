@@ -47,7 +47,7 @@ bool RankingList::init()
 	auto *phomebutton = Menu::create(homebutton, NULL);
 	phomebutton->setPosition(Vec2(-10, 200));
 	phomebutton->setScale(0.4f);
-	this->addChild(phomebutton, 4);
+	addChild(phomebutton, 4);
 
 	char name[3][17] = {0};
 	for (int i = 0; i < CCUserDefault::sharedUserDefault()->getStringForKey("name1").length(); i++)
@@ -97,6 +97,14 @@ bool RankingList::init()
 	auto THIRDS = LabelTTF::create(c, "Arial", 30);
 	THIRDS->setPosition(Vec2(215, 28));
 	addChild(THIRDS, 2);
+
+	auto clear = LabelTTF::create("CLEAR ALL", "Arial", 20);
+	auto pclear = MenuItemLabel::create(clear, CC_CALLBACK_1(RankingList::clearAll,this));
+	auto ppclear = Menu::create(pclear, NULL);
+	ppclear->setPosition(Vec2(170,170));
+	ppclear->setColor(ccc3(255,255,0));
+	addChild(ppclear, 3);
+
 	
 	
 	return true;
@@ -113,4 +121,9 @@ void RankingList::menuItemSettingCallback(Ref* pSender)
 void RankingList::menuOKCallback(cocos2d::Ref* pSender)
 {
 	Director::getInstance()->replaceScene(TransitionFadeUp::create(0.5f,HelloWorld::create()));
+}
+
+void RankingList::clearAll(cocos2d::Object* pSender)
+{
+	remove(CCUserDefault::getInstance()->getXMLFilePath().c_str());
 }

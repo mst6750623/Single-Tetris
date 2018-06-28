@@ -73,11 +73,6 @@ bool HelloWorld::init()
 	play->setScale(0.3f);
 	auto* pplay = Menu::create(play, NULL);
 	addChild(pplay,2);
-    /////////////////////////////
-    // 3. add your codes below...
-
-    // add a label shows "Hello World"
-    // create and initialize a label
 
    auto label = Label::createWithTTF("TETRIS", "fonts/Marker Felt.ttf", 50);
     if (label == nullptr)
@@ -122,7 +117,6 @@ bool HelloWorld::init()
 		origin.y + visibleSize.height - start->getContentSize().height - 260));
 	this->addChild(ppspeed_change, 2);
 
-    // add "HelloWorld" splash screen"
     auto sprite = Sprite::create("game1.jpg");
     if (sprite == nullptr)
     {
@@ -130,15 +124,10 @@ bool HelloWorld::init()
     }
     else
     {
-        // position the sprite on the center of the screen
 		sprite->setScale(1.0f);
         sprite->setPosition(Vec2(visibleSize.width/2 +origin.x, visibleSize.height/2 +origin.y));
-
-        // add the sprite as a child to this layer
-        this->addChild(sprite, 0);
+        addChild(sprite, 0);
     }
-
-	//this->addChild(help::create());
     return true;
 }
 
@@ -202,7 +191,6 @@ void HelloWorld::swtichtorank(cocos2d::Ref* pSender)
 void HelloWorld::switchtoHELP(cocos2d::Object* pSender)
 {
 	this->addChild(help::create(),5);
-	//Director::getInstance()->pushScene(help::create());
 }
 
 void HelloWorld::swtichtospeed(cocos2d::Ref* pSender)
@@ -294,5 +282,4 @@ void help::menuOKCallback(cocos2d::Ref* pSender)
 {
 	removeChild(sprite2, false);
 	removeChild(pback, false);
-	//Director::getInstance()->popScene();
 }
